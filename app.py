@@ -96,6 +96,27 @@ st.markdown("""
     
     .stMultiSelect, .stTextInput, .stSelectbox { border-radius: 12px; }
     .stMultiSelect span { font-family: "Hiragino Kaku Gothic ProN", sans-serif; }
+    
+    /* ============================================= */
+    /* ★追加修正：Step 2の選択タグの色を優しくする */
+    /* ============================================= */
+    
+    /* 選んだ瞬間に表示されるタグ（チップ）の背景色 */
+    span[data-baseweb="tag"] {
+        background-color: #FFF3E0 !important; /* 薄いオレンジ（カスタードクリーム色） */
+        border: 1px solid #FFB74D !important; /* 枠線も優しいオレンジに */
+    }
+    
+    /* タグの中の文字色 */
+    span[data-baseweb="tag"] span {
+        color: #333333 !important; /* 文字は読みやすい濃いグレー */
+    }
+
+    /* タグの「×」ボタンの色 */
+    span[data-baseweb="tag"] svg {
+        fill: #FF8C00 !important; /* オレンジ色 */
+        color: #FF8C00 !important;
+    }
     </style>
 """, unsafe_allow_html=True)
 
