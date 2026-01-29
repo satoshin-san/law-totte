@@ -10,6 +10,48 @@ import xml.etree.ElementTree as ET
 from datetime import datetime
 
 # ==========================================
+# 0. プリセット法令リスト (建築基準法関係規定)
+# ==========================================
+PRESET_CONSTRUCTION_LAWS = [
+    # --- 1. 建築・都市計画の基本 ---
+    "建築基準法", "建築基準法施行令", "建築基準法施行規則",
+    "都市計画法", "都市計画法施行令", "都市計画法施行規則",
+    "都市緑地法", "都市緑地法施行令", "都市緑地法施行規則",
+    "流通業務市街地の整備に関する法律", "流通業務市街地の整備に関する法律施行令", "流通業務市街地の整備に関する法律施行規則",
+    "宅地造成及び特定盛土等規制法", "宅地造成及び特定盛土等規制法施行令", "宅地造成及び特定盛土等規制法施行規則",
+    "景観法", "景観法施行令", "景観法施行規則",
+    # --- 2. 住宅・性能評価 ---
+    "住宅の品質確保の促進等に関する法律", "住宅の品質確保の促進等に関する法律施行令", "住宅の品質確保の促進等に関する法律施行規則",
+    "長期優良住宅の普及の促進に関する法律", "長期優良住宅の普及の促進に関する法律施行令", "長期優良住宅の普及の促進に関する法律施行規則",
+    "住宅宿泊事業法", "住宅宿泊事業法施行令", "住宅宿泊事業法施行規則",
+    # --- 3. 省エネ・リサイクル ---
+    "建築物のエネルギー消費性能の向上等に関する法律", "建築物のエネルギー消費性能の向上等に関する法律施行令", "建築物のエネルギー消費性能の向上等に関する法律施行規則",
+    "建設工事に係る資材の再資源化等に関する法律", "建設工事に係る資材の再資源化等に関する法律施行令", "建設工事に係る資材の再資源化等に関する法律施行規則",
+    # --- 4. 消防・危険物・産業保安 ---
+    "消防法", "消防法施行令", "消防法施行規則",
+    "液化石油ガスの保安の確保及び取引の適正化に関する法律", "液化石油ガスの保安の確保及び取引の適正化に関する法律施行令", "液化石油ガスの保安の確保及び取引の適正化に関する法律施行規則",
+    "高圧ガス保安法", "高圧ガス保安法施行令",
+    "ガス事業法", "ガス事業法施行令", "ガス事業法施行規則",
+    "労働安全衛生法", "労働安全衛生法施行令", "労働安全衛生規則",
+    # --- 5. 水・衛生・環境 ---
+    "水道法", "水道法施行令", "水道法施行規則",
+    "下水道法", "下水道法施行令", "下水道法施行規則",
+    "浄化槽法", "浄化槽法施行令", "環境省関係浄化槽法施行規則",
+    "建築物における衛生的環境の確保に関する法律", "建築物における衛生的環境の確保に関する法律施行令", "建築物における衛生的環境の確保に関する法律施行規則",
+    "特定都市河川浸水被害対策法", "特定都市河川浸水被害対策法施行令", "特定都市河川浸水被害対策法施行規則",
+    # --- 6. 交通・駐車場・港湾・空港 ---
+    "駐車場法", "駐車場法施行令", "駐車場法施行規則",
+    "自転車の安全利用の促進及び自転車等の駐車対策の総合的推進に関する法律", "自転車の安全利用の促進及び自転車等の駐車対策の総合的推進に関する法律施行令", "自転車の安全利用の促進及び自転車等の駐車対策の総合的推進に関する法律施行規則",
+    "港湾法", "港湾法施行令", "港湾法施行規則",
+    "特定空港周辺航空機騒音対策特別措置法", "特定空港周辺航空機騒音対策特別措置法施行令", "特定空港周辺航空機騒音対策特別措置法施行規則",
+    # --- 7. 福祉・その他 ---
+    "高齢者、障害者等の移動等の円滑化の促進に関する法律", "高齢者、障害者等の移動等の円滑化の促進に関する法律施行令", "高齢者、障害者等の移動等の円滑化の促進に関する法律施行規則",
+    # --- 8. 営業許可関連 ---
+    "旅館業法", "旅館業法施行令", "旅館業法施行規則",
+    "興行場法", "興行場法施行規則",
+]
+
+# ==========================================
 # 1. アプリの設定とデザイン (UI/UX)
 # ==========================================
 st.set_page_config(
@@ -21,19 +63,19 @@ st.set_page_config(
 # 優しいデザインにするためのカスタムCSS（ダークモード完全対策版）
 st.markdown("""
     <style>
-    /* --- 1. 全体の配色設定（ダークモード強制解除） --- */
+    /* --- 1. 全体の配色設定 --- */
     .stApp { 
-        background-color: #FFFBF0; /* 背景：アイボリー */
-        color: #333333 !important; /* 文字：濃いグレー（強制） */
+        background-color: #FFFBF0;
+        color: #333333 !important;
     }
     
-    /* --- 2. 見出し・本文・ラベルの文字色を黒に固定 --- */
+    /* --- 2. 文字色固定 --- */
     h1, h2, h3, h4, h5, h6, p, div, span, label, li {
         color: #333333;
         font-family: "Hiragino Maru Gothic Pro", "Yu Gothic UI", sans-serif;
     }
     
-    /* --- 3. 入力ボックス・ドロップダウン本体 --- */
+    /* --- 3. 入力ボックス --- */
     .stTextInput input, .stSelectbox div[data-baseweb="select"] > div, .stMultiSelect div[data-baseweb="select"] > div {
         background-color: #FFFFFF !important;
         color: #333333 !important;
@@ -41,7 +83,7 @@ st.markdown("""
         border: 1px solid #E0E0E0;
     }
 
-    /* --- ドロップダウンリスト（ポップアップ）の背景を白にする --- */
+    /* --- ドロップダウンリスト --- */
     div[data-baseweb="popover"], div[data-baseweb="menu"] {
         background-color: #FFFFFF !important;
     }
@@ -97,24 +139,16 @@ st.markdown("""
     .stMultiSelect, .stTextInput, .stSelectbox { border-radius: 12px; }
     .stMultiSelect span { font-family: "Hiragino Kaku Gothic ProN", sans-serif; }
     
-    /* ============================================= */
-    /* ★追加修正：Step 2の選択タグの色を優しくする */
-    /* ============================================= */
-    
-    /* 選んだ瞬間に表示されるタグ（チップ）の背景色 */
+    /* --- Step 2の選択タグの色修正 --- */
     span[data-baseweb="tag"] {
-        background-color: #FFF3E0 !important; /* 薄いオレンジ（カスタードクリーム色） */
-        border: 1px solid #FFB74D !important; /* 枠線も優しいオレンジに */
+        background-color: #FFF3E0 !important;
+        border: 1px solid #FFB74D !important;
     }
-    
-    /* タグの中の文字色 */
     span[data-baseweb="tag"] span {
-        color: #333333 !important; /* 文字は読みやすい濃いグレー */
+        color: #333333 !important;
     }
-
-    /* タグの「×」ボタンの色 */
     span[data-baseweb="tag"] svg {
-        fill: #FF8C00 !important; /* オレンジ色 */
+        fill: #FF8C00 !important;
         color: #FF8C00 !important;
     }
     </style>
@@ -273,7 +307,7 @@ def convert_law_to_markdown_v2(xml_bytes):
 # ==========================================
 
 def main():
-    # バナー画像の表示（なければスキップ）
+    # バナー画像の表示
     try:
         st.image("images/banner.png", use_container_width=True)
     except:
@@ -283,45 +317,37 @@ def main():
     st.caption("AIのための法令あつめ、わたしが代わりにやっておきます。")
 
     # ==========================================
-    # ★ 使い方ガイド＆AI活用レシピ (修正版)
+    # ★ 使い方ガイド＆AI活用レシピ
     # ==========================================
     with st.expander("🔰 使い方＆AI活用レシピ（ボクにお任せください！）"):
         st.markdown("##### 🐶 「ご主人様、AIに読ませる法令集めはボクがやります！」")
         st.caption("面倒なコピー＆ペーストは不要です。ボクが「AIが一番読みやすい形」に整えてお届けします。")
         
-        # --- 3ステップ解説 ---
         st.markdown("---")
         step1, step2, step3 = st.columns(3)
-        
         with step1:
             st.info("**Step 1. 探す** クンクン")
             st.markdown("###### 🏛️ ジャンルを選ぶ")
             st.caption("「建築」や「労働」など、気になる分野を選んでください。「すべて」なら全法令から探し出します！")
-            
         with step2:
             st.info("**Step 2. 集める** パクッ")
             st.markdown("###### 🛒 リストに追加")
             st.caption("法令名を入力して、必要なものをカートに入れてください。間違えたら「削除」でペッと吐き出せます。")
-            
         with step3:
             st.info("**Step 3. お届け** タッタッ")
             st.markdown("###### 📦 まとめてDL")
             st.caption("オレンジのボタンを押せば、すべての法令を整理整頓して、ZIPファイルでお届けします！")
 
-        # --- AI活用レシピ（修正済み） ---
         st.markdown("---")
         st.markdown("##### 💡 ダウンロードしたデータの活用レシピ")
-        st.caption("お届けしたファイル（Markdown形式）は、ChatGPTやNotebookLMの大好物です。こんな風に使ってみてください。")
+        st.caption("お届けしたファイル（Markdown形式）は、ChatGPTやNotebookLMの大好物です。")
 
-        # レシピ1：NotebookLM (ZIP解凍の指示を追加・違法性質問削除)
         st.markdown("**1️⃣ NotebookLM で「法令マスター」を作る**")
         st.code("【手順】\n1. ダウンロードしたZIPファイルを一度「解凍」する\n2. フォルダの中にある「.mdファイル」をNotebookLMにアップロード！\n\n【聞いてみよう】\n「新人研修のために、この法律の重要なポイントをスライド構成にまとめて」\n「第〇条の要件を、箇条書きで分かりやすく整理して」", language="text")
 
-        # レシピ2：ChatGPT
         st.markdown("**2️⃣ ChatGPT で「条文チェックリスト」を作る**")
         st.code("【手順】必要な法律のファイル(.md)をアップロードして指示する。\n\n【聞いてみよう】\n「建設業法_2026xxxx.md を読み込んで、請負業者の責務に関するチェックリストを表形式で作って」", language="text")
 
-        # ★重要：免責事項・注意喚起★
         st.error("⚠️ **【重要】AIのご利用に関するご注意**\n\nAIはもっともらしい嘘（ハルシネーション）をつくことがあります。特に法令の解釈や適法性の判断については、AIの回答を鵜呑みにせず、必ず**「法令の原文」**や**「公式のガイドライン」**をご自身で確認してください。")
 
     # セッション状態の初期化
@@ -341,9 +367,36 @@ def main():
         st.warning("法令リストが取得できませんでした。")
         return
 
-    # --- Step 2: 検索＆追加 (クリックで消えるボックス) ---
+    # --- Step 2: 検索＆追加 ---
     st.markdown(f"### Step 2. 法令を探してリストに追加")
     st.caption(f"🔍 現在、**{len(df_laws):,}** 件から検索できます")
+
+    # --- ★追加機能：プリセット法令読み込み ---
+    with st.expander("📚 おすすめセットを一括追加"):
+        st.info("よく使われる法令をまとめてリストに追加します。")
+        if st.button("🏗️ 建築基準法関係規定セット（建築基準法、都市計画法、消防法など約70件）"):
+            with st.spinner("全法令データベースから対象の法令を探しています...（少し時間がかかります）"):
+                # プリセットはジャンルをまたぐため、全法令リストから検索する
+                all_laws_df = fetch_laws_by_category("すべて")
+                
+                added_count = 0
+                if not all_laws_df.empty:
+                    for target_name in PRESET_CONSTRUCTION_LAWS:
+                        # 法令名で完全一致検索
+                        match = all_laws_df[all_laws_df["LawName"] == target_name]
+                        if not match.empty:
+                            display_label = match.iloc[0]["DisplayLabel"]
+                            # まだカートになければ追加
+                            if display_label not in st.session_state["selected_cart"]:
+                                st.session_state["selected_cart"].append(display_label)
+                                added_count += 1
+                
+                if added_count > 0:
+                    st.success(f"{added_count}件の法令を追加しました！")
+                    st.rerun()
+                else:
+                    st.warning("追加できる法令が見つかりませんでした（既に追加済みか、データが見つかりません）。")
+
 
     options = df_laws["DisplayLabel"].tolist()
     
@@ -355,7 +408,7 @@ def main():
                 st.session_state["selected_cart"].append(item)
         st.session_state.temp_search_box = []
 
-    # 検索ボックス（入力専用）
+    # 検索ボックス
     st.multiselect(
         "法令名・略称で検索（選ぶと下のリストに移動します）",
         options=options,
@@ -365,7 +418,7 @@ def main():
     )
     
     # ----------------------------------------------
-    # 選んだ法令リストの表示エリア（カード形式）
+    # 選んだ法令リストの表示エリア
     # ----------------------------------------------
     st.markdown("#### 📄 選んだ法令リスト（ここに溜まります）")
     
@@ -389,7 +442,7 @@ def main():
 
     # --- Step 3: 便利機能 ---
     st.markdown("")
-    with st.expander("📂 便利な機能（いつものリストを保存・読込）"):
+    with st.expander("📂 その他の便利機能（リスト保存・読込）"):
         current_selection = st.session_state["selected_cart"]
         if current_selection:
             json_str = json.dumps(current_selection, ensure_ascii=False, indent=2)
@@ -419,30 +472,44 @@ def main():
             with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
                 total = len(st.session_state["selected_cart"])
                 
+                # ダウンロード時は、各法令が属するジャンルに関わらず「全法令」から検索する必要がある場合がある
+                # （プリセットで追加された法令が、現在の選択ジャンルに含まれていない可能性があるため）
+                
+                # 効率化のため、もし現在のdf_lawsで見つからなければ、all_lawsをfetchする
+                all_laws_cache = None
+                
                 for i, display_label in enumerate(st.session_state["selected_cart"]):
+                    # まず現在のジャンルリストから探す
                     rows = df_laws[df_laws["DisplayLabel"] == display_label]
                     
+                    if rows.empty:
+                        # 見つからない場合は全リストを取得して探す（初回のみロード）
+                        if all_laws_cache is None:
+                            status_text.text("他のジャンルの法令を探しています...")
+                            all_laws_cache = fetch_laws_by_category("すべて")
+                        
+                        rows = all_laws_cache[all_laws_cache["DisplayLabel"] == display_label]
+
                     if not rows.empty:
                         law_name = rows.iloc[0]["LawName"]
                         law_id = rows.iloc[0]["LawId"]
+                        
+                        status_text.text(f"取得中: {law_name} ...")
+                        xml_bytes = fetch_law_xml_bytes(law_id)
+                        
+                        if xml_bytes:
+                            images = process_images_from_bytes(xml_bytes)
+                            for img_name, img_data in images.items():
+                                zf.writestr(f"images/{img_name}", img_data)
+                            
+                            md_content = convert_law_to_markdown_v2(xml_bytes)
+                            
+                            filename = f"{law_name}_{today_str}.md"
+                            zf.writestr(filename, md_content)
                     else:
                         law_name = display_label.split(" 【")[0]
-                        status_text.warning(f"「{law_name}」は現在のジャンルにないためスキップします（ジャンルを「すべて」にすると取得できる場合があります）。")
-                        continue
+                        status_text.warning(f"「{law_name}」のデータが見つかりませんでした。スキップします。")
 
-                    status_text.text(f"取得中: {law_name} ...")
-                    xml_bytes = fetch_law_xml_bytes(law_id)
-                    
-                    if xml_bytes:
-                        images = process_images_from_bytes(xml_bytes)
-                        for img_name, img_data in images.items():
-                            zf.writestr(f"images/{img_name}", img_data)
-                        
-                        md_content = convert_law_to_markdown_v2(xml_bytes)
-                        
-                        filename = f"{law_name}_{today_str}.md"
-                        zf.writestr(filename, md_content)
-                    
                     progress_bar.progress((i + 1) / total)
             
             status_text.text("完了しました！ワン！🐶")
@@ -460,7 +527,7 @@ def main():
         st.warning("☝️ まずは法令を選んでリストに追加してください")
 
     # ----------------------------------------------
-    # フッター：お問い合わせ & アクセスカウンター
+    # フッター
     # ----------------------------------------------
     st.markdown("---")
     
