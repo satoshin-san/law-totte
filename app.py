@@ -8,6 +8,7 @@ import base64
 import re
 import xml.etree.ElementTree as ET
 from datetime import datetime
+import time
 
 # ==========================================
 # 0. プリセット法令リスト (建築基準法関係規定)
@@ -60,96 +61,130 @@ st.set_page_config(
     layout="centered"
 )
 
-# 優しいデザインにするためのカスタムCSS（ダークモード完全対策版）
+# 優しいデザインにするためのカスタムCSS（ダークモード・マルチセレクト完全対策版）
 st.markdown("""
     <style>
-    /* --- 1. 全体の配色設定 --- */
+    /* --- 0. Google Fonts読み込み --- */
+    @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700&display=swap');
+
+    /* --- 1. 全体の配色（ダークモード設定を強制的に上書き） --- */
     .stApp { 
-        background-color: #FFFBF0;
+        background-color: #FFFBF0 !important; /* 背景色を強制 */
+        color: #4A4A4A !important; /* 文字色を強制 */
+    }
+    
+    html, body, [class*="css"] {
+        font-family: 'M PLUS Rounded 1c', sans-serif;
+        color: #4A4A4A !important;
+    }
+    
+    /* --- 2. 見出しのデザイン --- */
+    h1, h2, h3, h4, h5, h6 {
+        color: #E67E22 !important; /* オレンジ色で統一 */
+        font-weight: 700 !important;
+    }
+
+    /* --- ★重要★: ダークモード時の文字色同化対策 --- */
+    
+    /* アラート (st.warning, st.info) 内の文字 */
+    div[data-testid="stAlert"] { color: #333333 !important; }
+    div[data-testid="stAlert"] p { color: #333333 !important; }
+    
+    /* 通常の入力ボックス (st.text_input) のプレースホルダー */
+    input::placeholder {
+        color: #888888 !important;
+        opacity: 1 !important;
+    }
+    
+    /* ★マルチセレクト (st.multiselect) 専用の対策★ */
+    /* 未選択時の「キーワードを入力...」の文字色 */
+    .stMultiSelect div[data-baseweb="select"] span {
+        color: #666666 !important; 
+    }
+    /* 選択されたタグの中の文字色（念のため） */
+    .stMultiSelect span[data-baseweb="tag"] span {
         color: #333333 !important;
     }
-    
-    /* --- 2. 文字色固定 --- */
-    h1, h2, h3, h4, h5, h6, p, div, span, label, li {
-        color: #333333;
-        font-family: "Hiragino Maru Gothic Pro", "Yu Gothic UI", sans-serif;
+    /* 入力中の文字色 */
+    .stMultiSelect input {
+        color: #333333 !important;
     }
-    
-    /* --- 3. 入力ボックス --- */
-    .stTextInput input, .stSelectbox div[data-baseweb="select"] > div, .stMultiSelect div[data-baseweb="select"] > div {
+
+    /* --- 3. 入力ボックス・選択ボックスの背景白固定 --- */
+    .stTextInput input, 
+    .stSelectbox div[data-baseweb="select"] > div, 
+    .stMultiSelect div[data-baseweb="select"] > div {
         background-color: #FFFFFF !important;
         color: #333333 !important;
         border-radius: 12px;
-        border: 1px solid #E0E0E0;
-    }
-
-    /* --- ドロップダウンリスト --- */
-    div[data-baseweb="popover"], div[data-baseweb="menu"] {
-        background-color: #FFFFFF !important;
-    }
-    ul[data-testid="stSelectboxVirtualDropdown"] li, 
-    ul[data-testid="stSelectboxVirtualDropdown"] div {
-        background-color: #FFFFFF !important;
-        color: #333333 !important;
-    }
-    ul[data-testid="stSelectboxVirtualDropdown"] li:hover {
-        background-color: #FFF3E0 !important;
-    }
-    ul[data-testid="stSelectboxVirtualDropdown"] li[aria-selected="true"] {
-        background-color: #FFE0B2 !important;
-        color: #333333 !important;
+        border: 1px solid #E0E0E0 !important;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
     }
     
+    /* ドロップダウンメニューの中身も白くする */
+    ul[data-testid="stSelectboxVirtualDropdown"] {
+        background-color: #FFFFFF !important;
+    }
+    li[role="option"] {
+        background-color: #FFFFFF !important;
+        color: #333333 !important;
+    }
+    li[role="option"]:hover {
+        background-color: #FFF3E0 !important;
+    }
+
     /* --- 4. ボタンのデザイン --- */
     div.stButton > button {
-        background-color: #FF8C00; 
+        background-color: #FF8C00 !important; 
         color: white !important; 
-        border-radius: 12px; 
+        border-radius: 20px; 
         border: none; 
-        padding: 10px 24px; 
+        padding: 12px 28px; 
         font-weight: bold;
+        box-shadow: 0 4px 6px rgba(255, 140, 0, 0.3);
+        transition: all 0.3s ease;
     }
     div.stButton > button:hover { 
-        background-color: #E67E22; 
-        color: white !important; 
+        background-color: #E67E22 !important; 
+        transform: translateY(-2px); 
+        box-shadow: 0 6px 8px rgba(255, 140, 0, 0.4);
     }
     
     /* 削除ボタン */
     div[data-testid="column"] button {
-        background-color: #FF6B6B; 
-        color: white !important; 
+        background-color: #FF6B6B !important; 
         border-radius: 50%; 
-        width: 30px; 
-        height: 30px; 
-        padding: 0;
+        width: 32px; 
+        height: 32px;
+        box-shadow: none;
+        padding: 0 !important;
     }
     
-    /* --- 5. リストカードのデザイン --- */
-    .law-card {
-        background-color: white;
-        padding: 10px 15px;
-        border-radius: 8px;
-        margin-bottom: 8px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        display: flex;
-        align-items: center;
-        color: #333333 !important;
+    /* --- 5. カード（コンテナ）のデザイン --- */
+    div[data-testid="stVerticalBlockBorderWrapper"] > div {
+        background-color: #FFFFFF !important; 
+        border-radius: 20px !important;
+        border: 2px solid #FFE0B2 !important; 
+        padding: 20px !important;
     }
     
-    .stMultiSelect, .stTextInput, .stSelectbox { border-radius: 12px; }
-    .stMultiSelect span { font-family: "Hiragino Kaku Gothic ProN", sans-serif; }
+    /* --- 6. Expander（アコーディオン）のデザイン --- */
+    .streamlit-expanderHeader {
+        background-color: #FFFFFF !important;
+        color: #4A4A4A !important;
+        border-radius: 10px !important;
+        border: 1px solid #E0E0E0 !important;
+    }
+    .streamlit-expanderContent {
+        background-color: #FFFFFF !important;
+        color: #4A4A4A !important;
+        border-top: none !important;
+    }
     
-    /* --- Step 2の選択タグの色修正 --- */
+    /* --- 7. タグ（選択済みアイテム）のデザイン --- */
     span[data-baseweb="tag"] {
         background-color: #FFF3E0 !important;
         border: 1px solid #FFB74D !important;
-    }
-    span[data-baseweb="tag"] span {
-        color: #333333 !important;
-    }
-    span[data-baseweb="tag"] svg {
-        fill: #FF8C00 !important;
-        color: #FF8C00 !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -303,7 +338,7 @@ def convert_law_to_markdown_v2(xml_bytes):
         # Tableタグがあるか確認
         table_elem = tbl.find(".//Table")
         
-        # Tableがない場合（テキストのみの場合など）は従来通りテキストとして出力
+        # Tableがない場合
         if table_elem is None:
             content = "".join(tbl.itertext())
             content = re.sub(r'\s+', ' ', content).strip()
@@ -321,36 +356,26 @@ def convert_law_to_markdown_v2(xml_bytes):
         for row in rows:
             cols = []
             for col in row.findall(".//TableColumn"):
-                # セル内のテキストを取得して整形
                 text = "".join(col.itertext())
                 text = re.sub(r'\s+', ' ', text).strip()
-                # 読みやすくするために「。」の後に改行タグを入れる
                 text = text.replace("。", "。<br>")
                 cols.append(text)
             markdown_rows.append(cols)
 
-        # 列数を統一（Markdownの表崩れ防止）
-        if not markdown_rows:
-            continue
+        if not markdown_rows: continue
             
         max_cols = max(len(r) for r in markdown_rows)
-        if max_cols == 0:
-            continue
+        if max_cols == 0: continue
 
         for r in markdown_rows:
             while len(r) < max_cols:
                 r.append("")
 
-        # Markdownテーブルの生成
-        # 1行目をヘッダーとして扱う
         header_row = markdown_rows[0]
         md_text += "| " + " | ".join(header_row) + " |\n"
-        # 区切り線
         md_text += "| " + " | ".join(["---"] * max_cols) + " |\n"
-        # データ行（2行目以降）
         for row in markdown_rows[1:]:
              md_text += "| " + " | ".join(row) + " |\n"
-        
         md_text += "\n"
 
     return md_text
@@ -366,51 +391,80 @@ def main():
     except:
         st.warning("⚠️ 画像が見つかりません。imagesフォルダに 'banner.png' があるか確認してください")
 
+    # タイトル部分
     st.markdown("### 🐶 法令、とってきました。")
     st.caption("AIのための法令あつめ、わたしが代わりにやっておきます。")
 
     # ==========================================
-    # ★ 使い方ガイド＆AI活用レシピ
+    # ★ 使い方ガイド (全文復活＆デザイン調整)
     # ==========================================
     with st.expander("🔰 使い方＆AI活用レシピ（ボクにお任せください！）"):
         st.markdown("##### 🐶 「ご主人様、AIに読ませる法令集めはボクがやります！」")
-        st.caption("面倒なコピー＆ペーストは不要です。ボクが「AIが一番読みやすい形」に整えてお届けします。")
+        st.markdown("面倒なコピー＆ペーストは不要です。ボクが「AIが一番読みやすい形」に整えてお届けします。")
         
         st.markdown("---")
+        
+        # 3ステップをカラムで並べる
         step1, step2, step3 = st.columns(3)
         with step1:
-            st.info("**Step 1. 探す** クンクン")
-            st.markdown("###### 🏛️ ジャンルを選ぶ")
-            st.caption("「建築」や「労働」など、気になる分野を選んでください。「すべて」なら全法令から探し出します！")
+            st.info("""**Step 1. 探す** クンクン
+            
+###### 🏛️ ジャンルを選ぶ
+
+「建築」や「労働」など、気になる分野を選んでください。「すべて」なら全法令から探し出します！""")
         with step2:
-            st.info("**Step 2. 集める** パクッ")
-            st.markdown("###### 🛒 リストに追加")
-            st.caption("法令名を入力して、必要なものをカートに入れてください。間違えたら「削除」でペッと吐き出せます。")
+            st.info("""**Step 2. 集める** パクッ
+
+###### 🛒 リストに追加
+
+法令名を入力して、必要なものをカートに入れてください。間違えたら「削除」でペッと吐き出せます。""")
         with step3:
-            st.info("**Step 3. お届け** タッタッ")
-            st.markdown("###### 📦 まとめてDL")
-            st.caption("オレンジのボタンを押せば、すべての法令を整理整頓して、ZIPファイルでお届けします！")
+            st.info("""**Step 3. お届け** タッタッ
+
+###### 📦 まとめてDL
+
+オレンジのボタンを押せば、すべての法令を整理整頓して、ZIPファイルでお届けします！""")
 
         st.markdown("---")
         st.markdown("##### 💡 ダウンロードしたデータの活用レシピ")
         st.caption("お届けしたファイル（Markdown形式）は、ChatGPTやNotebookLMの大好物です。")
 
         st.markdown("**1️⃣ NotebookLM で「法令マスター」を作る**")
-        st.code("【手順】\n1. ダウンロードしたZIPファイルを一度「解凍」する\n2. フォルダの中にある「.mdファイル」をNotebookLMにアップロード！\n\n【聞いてみよう】\n「新人研修のために、この法律の重要なポイントをスライド構成にまとめて」\n「第〇条の要件を、箇条書きで分かりやすく整理して」", language="text")
+        # 手順を見やすくコードブロック風に
+        st.code("""【手順】
+1. ダウンロードしたZIPファイルを一度「解凍」する
+2. フォルダの中にある「.mdファイル」をNotebookLMにアップロード！
+
+【聞いてみよう】
+「新人研修のために、この法律の重要なポイントをスライド構成にまとめて」
+「第〇条の要件を、箇条書きで分かりやすく整理して」""", language="text")
 
         st.markdown("**2️⃣ ChatGPT で「条文チェックリスト」を作る**")
-        st.code("【手順】必要な法律のファイル(.md)をアップロードして指示する。\n\n【聞いてみよう】\n「建設業法_2026xxxx.md を読み込んで、請負業者の責務に関するチェックリストを表形式で作って」", language="text")
+        st.code("""【手順】必要な法律のファイル(.md)をアップロードして指示する。
 
-        st.error("⚠️ **【重要】AIのご利用に関するご注意**\n\nAIはもっともらしい嘘（ハルシネーション）をつくことがあります。特に法令の解釈や適法性の判断については、AIの回答を鵜呑みにせず、必ず**「法令の原文」**や**「公式のガイドライン」**をご自身で確認してください。")
+【聞いてみよう】
+「建設業法_2026xxxx.md を読み込んで、請負業者の責務に関するチェックリストを表形式で作って」""", language="text")
+
+        st.error("""⚠️ **【重要】AIのご利用に関するご注意**
+AIはもっともらしい嘘（ハルシネーション）をつくことがあります。特に法令の解釈や適法性の判断については、AIの回答を鵜呑みにせず、必ず**「法令の原文」や「公式のガイドライン」**をご自身で確認してください。""")
 
     # セッション状態の初期化
     if "selected_cart" not in st.session_state:
         st.session_state["selected_cart"] = []
 
-    # --- Step 1: ジャンル (公式分類) ---
-    st.markdown("### Step 1. ジャンルを選んでください")
-    genre_options = ["すべて"] + list(OFFICIAL_CATEGORY_MAP.keys())
-    selected_genre = st.selectbox("ジャンルを選択", options=genre_options)
+    # ==========================================
+    # Step 1: ジャンル選択 (カードUI & インデント)
+    # ==========================================
+    st.markdown("##### Step 1. ジャンルを選んでください")
+    
+    with st.container(border=True): # カード化！
+        # 左右に余白を作るためのカラム (左5%, 右95%)
+        col_spacer, col_content = st.columns([0.05, 0.95])
+        
+        with col_content:
+            st.caption("「建築」や「労働」など、気になる分野を選んでください。「すべて」なら全法令から探し出します！")
+            genre_options = ["すべて"] + list(OFFICIAL_CATEGORY_MAP.keys())
+            selected_genre = st.selectbox("ジャンルを選択", options=genre_options, label_visibility="collapsed")
 
     # --- データ取得 ---
     with st.spinner(f"「{selected_genre}」の法令を探しています...🐶"):
@@ -420,71 +474,73 @@ def main():
         st.warning("法令リストが取得できませんでした。")
         return
 
-    # --- Step 2: 検索＆追加 ---
-    st.markdown(f"### Step 2. 法令を探してリストに追加")
-    st.caption(f"🔍 現在、**{len(df_laws):,}** 件から検索できます")
-
-    # --- ★追加機能：プリセット法令読み込み ---
-    with st.expander("📚 おすすめセットを一括追加"):
-        st.info("よく使われる法令をまとめてリストに追加します。")
-        if st.button("🏗️ 建築基準法関係規定セット（建築基準法、都市計画法、消防法など約70件）"):
-            with st.spinner("全法令データベースから対象の法令を探しています...（少し時間がかかります）"):
-                # プリセットはジャンルをまたぐため、全法令リストから検索する
-                all_laws_df = fetch_laws_by_category("すべて")
-                
-                added_count = 0
-                if not all_laws_df.empty:
-                    for target_name in PRESET_CONSTRUCTION_LAWS:
-                        # 法令名で完全一致検索
-                        match = all_laws_df[all_laws_df["LawName"] == target_name]
-                        if not match.empty:
-                            display_label = match.iloc[0]["DisplayLabel"]
-                            # まだカートになければ追加
-                            if display_label not in st.session_state["selected_cart"]:
-                                st.session_state["selected_cart"].append(display_label)
-                                added_count += 1
-                
-                if added_count > 0:
-                    st.success(f"{added_count}件の法令を追加しました！")
-                    st.rerun()
-                else:
-                    st.warning("追加できる法令が見つかりませんでした（既に追加済みか、データが見つかりません）。")
-
-
-    options = df_laws["DisplayLabel"].tolist()
+    # ==========================================
+    # Step 2: 検索＆追加 (カードUI & インデント)
+    # ==========================================
+    st.markdown(f"##### Step 2. 法令を探してリストに追加")
     
-    # 追加処理（コールバック）
-    def add_to_cart():
-        new_items = st.session_state.temp_search_box
-        for item in new_items:
-            if item not in st.session_state["selected_cart"]:
-                st.session_state["selected_cart"].append(item)
-        st.session_state.temp_search_box = []
+    with st.container(border=True): # カード化！
+        col_spacer, col_content = st.columns([0.05, 0.95])
+        
+        with col_content:
+            st.caption(f"🔍 現在、**{len(df_laws):,}** 件から検索できます")
+            
+            # プリセットボタン
+            with st.expander("📚 おすすめセットを一括追加"):
+                st.info("よく使われる法令をまとめてリストに追加します。")
+                if st.button("🏗️ 建築基準法関係規定セット（約70件）"):
+                    with st.spinner("全法令データベースから対象の法令を探しています..."):
+                        all_laws_df = fetch_laws_by_category("すべて")
+                        added_count = 0
+                        if not all_laws_df.empty:
+                            for target_name in PRESET_CONSTRUCTION_LAWS:
+                                match = all_laws_df[all_laws_df["LawName"] == target_name]
+                                if not match.empty:
+                                    display_label = match.iloc[0]["DisplayLabel"]
+                                    if display_label not in st.session_state["selected_cart"]:
+                                        st.session_state["selected_cart"].append(display_label)
+                                        added_count += 1
+                        if added_count > 0:
+                            st.success(f"{added_count}件の法令を追加しました！")
+                            st.rerun()
+                        else:
+                            st.warning("追加できる法令が見つかりませんでした。")
 
-    # 検索ボックス
-    st.multiselect(
-        "法令名・略称で検索（選ぶと下のリストに移動します）",
-        options=options,
-        placeholder="キーワードを入力...（例：建築基準法）",
-        key="temp_search_box",
-        on_change=add_to_cart
-    )
-    
+            # 検索ボックス
+            options = df_laws["DisplayLabel"].tolist()
+            def add_to_cart():
+                new_items = st.session_state.temp_search_box
+                for item in new_items:
+                    if item not in st.session_state["selected_cart"]:
+                        st.session_state["selected_cart"].append(item)
+                st.session_state.temp_search_box = []
+
+            st.multiselect(
+                "法令名・略称で検索",
+                options=options,
+                placeholder="キーワードを入力...（例：建築基準法）",
+                key="temp_search_box",
+                on_change=add_to_cart,
+                label_visibility="collapsed"
+            )
+
     # ----------------------------------------------
-    # 選んだ法令リストの表示エリア
+    # カートの中身 (リスト表示)
     # ----------------------------------------------
-    st.markdown("#### 📄 選んだ法令リスト（ここに溜まります）")
+    st.markdown("###### 📄 選んだ法令リスト（ここに溜まります）")
     
     if not st.session_state["selected_cart"]:
         st.info("まだ何も選ばれていません。上の検索ボックスから追加してください。")
     else:
+        # リスト自体もカード枠で囲む
         with st.container(border=True):
             items_to_remove = []
             for item in st.session_state["selected_cart"]:
-                c1, c2 = st.columns([0.85, 0.15])
-                with c1:
+                # リストアイテムのインデントと削除ボタンの配置
+                c_sp, c_text, c_btn = st.columns([0.05, 0.8, 0.15])
+                with c_text:
                     st.write(f"・ {item}")
-                with c2:
+                with c_btn:
                     if st.button("削除", key=f"del_{item}"):
                         items_to_remove.append(item)
             
@@ -493,99 +549,103 @@ def main():
                     st.session_state["selected_cart"].remove(rm_item)
                 st.rerun()
 
-    # --- Step 3: 便利機能 ---
+    # --- 便利機能 (JSON保存・読込) 修正版 ---
     st.markdown("")
     with st.expander("📂 その他の便利機能（リスト保存・読込）"):
+        # 保存機能
         current_selection = st.session_state["selected_cart"]
         if current_selection:
+            # 日本語文字化け対策: ensure_ascii=False
             json_str = json.dumps(current_selection, ensure_ascii=False, indent=2)
-            st.download_button("今のリストを保存する (JSON)", json_str, "my_law_set.json", "application/json")
-        
-        uploaded_file = st.file_uploader("保存したリストを読み込む", type=["json"])
-        if uploaded_file and st.button("このリストを適用する"):
-            try:
-                loaded_data = json.load(uploaded_file)
-                st.session_state["selected_cart"] = loaded_data
-                st.rerun()
-            except:
-                st.error("ファイルの読み込みに失敗しました。")
-
-    # --- Step 4: ダウンロード ---
-    st.markdown("### Step 3. ダウンロード")
-    
-    if st.session_state["selected_cart"]:
-        count = len(st.session_state["selected_cart"])
-        if st.button(f"🐶 {count}件の法令データをZIPでダウンロード"):
-            progress_bar = st.progress(0)
-            status_text = st.empty()
-            zip_buffer = io.BytesIO()
-            
-            today_str = datetime.now().strftime('%Y%m%d')
-            
-            with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
-                total = len(st.session_state["selected_cart"])
-                
-                # ダウンロード時は、各法令が属するジャンルに関わらず「全法令」から検索する必要がある場合がある
-                # （プリセットで追加された法令が、現在の選択ジャンルに含まれていない可能性があるため）
-                
-                # 効率化のため、もし現在のdf_lawsで見つからなければ、all_lawsをfetchする
-                all_laws_cache = None
-                
-                for i, display_label in enumerate(st.session_state["selected_cart"]):
-                    # まず現在のジャンルリストから探す
-                    rows = df_laws[df_laws["DisplayLabel"] == display_label]
-                    
-                    if rows.empty:
-                        # 見つからない場合は全リストを取得して探す（初回のみロード）
-                        if all_laws_cache is None:
-                            status_text.text("他のジャンルの法令を探しています...")
-                            all_laws_cache = fetch_laws_by_category("すべて")
-                        
-                        rows = all_laws_cache[all_laws_cache["DisplayLabel"] == display_label]
-
-                    if not rows.empty:
-                        law_name = rows.iloc[0]["LawName"]
-                        law_id = rows.iloc[0]["LawId"]
-                        
-                        status_text.text(f"取得中: {law_name} ...")
-                        xml_bytes = fetch_law_xml_bytes(law_id)
-                        
-                        if xml_bytes:
-                            images = process_images_from_bytes(xml_bytes)
-                            for img_name, img_data in images.items():
-                                zf.writestr(f"images/{img_name}", img_data)
-                            
-                            md_content = convert_law_to_markdown_v2(xml_bytes)
-                            
-                            filename = f"{law_name}_{today_str}.md"
-                            zf.writestr(filename, md_content)
-                    else:
-                        law_name = display_label.split(" 【")[0]
-                        status_text.warning(f"「{law_name}」のデータが見つかりませんでした。スキップします。")
-
-                    progress_bar.progress((i + 1) / total)
-            
-            status_text.text("完了しました！ワン！🐶")
-            zip_buffer.seek(0)
-            
-            zip_filename = f"法令データセット_{today_str}.zip"
-            
             st.download_button(
-                label="📦 ZIPファイルを保存する",
-                data=zip_buffer,
-                file_name=zip_filename,
-                mime="application/zip"
+                label="今のリストを保存する (JSON)",
+                data=json_str,
+                file_name="my_law_set.json",
+                mime="application/json"
             )
-    else:
-        st.warning("☝️ まずは法令を選んでリストに追加してください")
+        
+        # 読み込み機能 (ロバスト修正済み)
+        uploaded_file = st.file_uploader("保存したリストを読み込む", type=["json"])
+        if uploaded_file is not None:
+            if st.button("このリストを適用する"):
+                try:
+                    # ファイルポインタを先頭に戻す
+                    uploaded_file.seek(0)
+                    # JSON読み込み
+                    loaded_data = json.load(uploaded_file)
+                    
+                    # データ検証 (リスト形式かどうか)
+                    if isinstance(loaded_data, list):
+                        st.session_state["selected_cart"] = loaded_data
+                        st.success("読み込み完了！リストを更新します...")
+                        time.sleep(1) # メッセージを表示する時間を確保
+                        st.rerun()
+                    else:
+                        st.error("エラー: JSONファイルの形式が正しくありません（リスト形式ではありません）。")
+                except Exception as e:
+                    st.error(f"読み込みに失敗しました: {e}")
+
+    # ==========================================
+    # Step 3: ダウンロード (カードUI)
+    # ==========================================
+    st.markdown("##### Step 3. ダウンロード")
+    
+    with st.container(border=True):
+        col_spacer, col_content = st.columns([0.05, 0.95])
+        with col_content:
+            if st.session_state["selected_cart"]:
+                count = len(st.session_state["selected_cart"])
+                st.write(f"準備完了！ **{count}件** の法令データをパッケージします。")
+                if st.button(f"🐶 ZIPでダウンロードする"):
+                    progress_bar = st.progress(0)
+                    status_text = st.empty()
+                    zip_buffer = io.BytesIO()
+                    today_str = datetime.now().strftime('%Y%m%d')
+                    
+                    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+                        total = len(st.session_state["selected_cart"])
+                        all_laws_cache = None
+                        
+                        for i, display_label in enumerate(st.session_state["selected_cart"]):
+                            rows = df_laws[df_laws["DisplayLabel"] == display_label]
+                            if rows.empty:
+                                if all_laws_cache is None:
+                                    status_text.text("他のジャンルの法令を探しています...")
+                                    all_laws_cache = fetch_laws_by_category("すべて")
+                                rows = all_laws_cache[all_laws_cache["DisplayLabel"] == display_label]
+
+                            if not rows.empty:
+                                law_name = rows.iloc[0]["LawName"]
+                                law_id = rows.iloc[0]["LawId"]
+                                status_text.text(f"取得中: {law_name} ...")
+                                xml_bytes = fetch_law_xml_bytes(law_id)
+                                
+                                if xml_bytes:
+                                    images = process_images_from_bytes(xml_bytes)
+                                    for img_name, img_data in images.items():
+                                        zf.writestr(f"images/{img_name}", img_data)
+                                    md_content = convert_law_to_markdown_v2(xml_bytes)
+                                    filename = f"{law_name}_{today_str}.md"
+                                    zf.writestr(filename, md_content)
+                            progress_bar.progress((i + 1) / total)
+                    
+                    status_text.text("完了しました！ワン！🐶")
+                    zip_buffer.seek(0)
+                    zip_filename = f"法令データセット_{today_str}.zip"
+                    st.download_button(
+                        label="📦 ファイルを保存する",
+                        data=zip_buffer,
+                        file_name=zip_filename,
+                        mime="application/zip"
+                    )
+            else:
+                st.warning("☝️ まずは法令を選んでリストに追加してください")
 
     # ----------------------------------------------
     # フッター
     # ----------------------------------------------
     st.markdown("---")
-    
     f_col1, f_col2 = st.columns([0.4, 0.6])
-    
     with f_col1:
         st.caption("訪問者数：")
         st.markdown(
@@ -594,17 +654,9 @@ def main():
             """,
             unsafe_allow_html=True
         )
-        
     with f_col2:
         st.markdown("##### 🦁 お問い合わせ・改善提案")
-        st.caption(
-            """
-            アプリへのご意見や改善提案は、  
-            **Discord** または **リベシティ** にて、  
-            **『さとしん』** 宛にご連絡ください。
-            """
-        )
-        # ボタンを2つ並べて表示
+        st.caption("アプリへのご意見は、Discord または リベシティにて『さとしん』宛にご連絡ください。")
         st.link_button("💬 Discord でメッセージを送る", "https://discordapp.com/users/1178537787662815324")
         st.link_button("🦁 リベシティ「さとしん」プロフィール", "https://libecity.com/user_profile/Yn4UTV5ALtd8JY2y0WUSEofjYP33")
 
