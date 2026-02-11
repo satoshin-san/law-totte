@@ -258,7 +258,7 @@ def process_images_from_bytes(xml_bytes):
     return image_files
 
 def convert_law_to_markdown_v2(xml_bytes):
-    """Markdown変換"""
+    """Markdown変換（別表の表組み対応版）"""
     try: root = ET.fromstring(xml_bytes)
     except: return "XML Parse Error"
 
@@ -293,13 +293,66 @@ def convert_law_to_markdown_v2(xml_bytes):
                     s_sent = "".join(sub.find(".//Sentence").itertext()) if sub.find(".//Sentence") is not None else ""
                     md_text += f"    - **{s_title}** {s_sent}\n"
 
-    # 別表
+    # 別表 (AppdxTable)
     for tbl in root.findall(".//AppdxTable"):
-        title = tbl.find("AppdxTableTitle").text or "別表" if tbl.find("AppdxTableTitle") is not None else "別表"
-        md_text += f"\n## {title}\n(表データが含まれます)\n"
-        content = "".join(tbl.itertext())
-        content = re.sub(r'\s+', ' ', content).strip()
-        md_text += f"> {content[:1000]}...\n\n"
+        # タイトル取得
+        title_elem = tbl.find("AppdxTableTitle")
+        title = title_elem.text.strip() if (title_elem is not None and title_elem.text) else "別表"
+        md_text += f"\n## {title}\n\n"
+
+        # Tableタグがあるか確認
+        table_elem = tbl.find(".//Table")
+        
+        # Tableがない場合（テキストのみの場合など）は従来通りテキストとして出力
+        if table_elem is None:
+            content = "".join(tbl.itertext())
+            content = re.sub(r'\s+', ' ', content).strip()
+            md_text += f"> {content[:1000]}...\n\n"
+            continue
+
+        # TableRowを取得
+        rows = table_elem.findall(".//TableRow")
+        if not rows:
+            continue
+        
+        markdown_rows = []
+        
+        # 各行を処理
+        for row in rows:
+            cols = []
+            for col in row.findall(".//TableColumn"):
+                # セル内のテキストを取得して整形
+                text = "".join(col.itertext())
+                text = re.sub(r'\s+', ' ', text).strip()
+                # 読みやすくするために「。」の後に改行タグを入れる
+                text = text.replace("。", "。<br>")
+                cols.append(text)
+            markdown_rows.append(cols)
+
+        # 列数を統一（Markdownの表崩れ防止）
+        if not markdown_rows:
+            continue
+            
+        max_cols = max(len(r) for r in markdown_rows)
+        if max_cols == 0:
+            continue
+
+        for r in markdown_rows:
+            while len(r) < max_cols:
+                r.append("")
+
+        # Markdownテーブルの生成
+        # 1行目をヘッダーとして扱う
+        header_row = markdown_rows[0]
+        md_text += "| " + " | ".join(header_row) + " |\n"
+        # 区切り線
+        md_text += "| " + " | ".join(["---"] * max_cols) + " |\n"
+        # データ行（2行目以降）
+        for row in markdown_rows[1:]:
+             md_text += "| " + " | ".join(row) + " |\n"
+        
+        md_text += "\n"
+
     return md_text
 
 # ==========================================
@@ -547,11 +600,13 @@ def main():
         st.caption(
             """
             アプリへのご意見や改善提案は、  
-            **リベラルアーツ大学のオンラインコミュニティ「リベシティ」** にて、  
+            **Discord** または **リベシティ** にて、  
             **『さとしん』** 宛にご連絡ください。
             """
         )
-        st.link_button("🦁 リベシティ「さとしん」プロフィール", "https://libecity.com/user_profile/Yn4UTV5ALtd8JY2y0WUSEofjYP33", help="リベシティのサイトが開きます")
+        # ボタンを2つ並べて表示
+        st.link_button("💬 Discord でメッセージを送る", "https://discordapp.com/users/1178537787662815324")
+        st.link_button("🦁 リベシティ「さとしん」プロフィール", "https://libecity.com/user_profile/Yn4UTV5ALtd8JY2y0WUSEofjYP33")
 
 if __name__ == "__main__":
     main()
